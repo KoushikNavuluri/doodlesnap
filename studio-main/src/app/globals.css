@@ -86,3 +86,46 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Doodle Loading Animations */
+@keyframes rainbow-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes wave-flow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+@keyframes float-up {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.rainbow-spin {
+  animation: rainbow-spin 6s linear infinite;
+}
+
+.wave-flow {
+  animation: wave-flow 3s ease-in-out infinite;
+}
+
+.float-up {
+  animation: float-up 3s ease-in-out infinite;
+}
+
+/* Sketch Animation for Doodling Effect */
+@keyframes sketch-animation {
+  0% {
+    stroke-dashoffset: 350;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.sketch-animation {
+  stroke-dasharray: 350;
+  animation: sketch-animation 2s ease-in-out infinite;
+}

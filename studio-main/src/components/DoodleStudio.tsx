@@ -12,6 +12,7 @@ import { generateDoodle } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import DoodleLoadingAnimation from '@/components/DoodleLoadingAnimation';
 
 export default function DoodleStudio() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -190,7 +191,7 @@ export default function DoodleStudio() {
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                      <CardTitle className="font-headline text-2xl">Doodled Image</CardTitle>
+                      <CardTitle className="font-headline text-2xl">Your Doodle Snap ✨ </CardTitle>
                       {doodledImage && !isLoading && (
                           <Button onClick={handleDownload} variant="secondary">
                               <Download className="mr-2 h-4 w-4" />
@@ -201,8 +202,8 @@ export default function DoodleStudio() {
                 </CardHeader>
                 <CardContent className="flex items-center justify-center min-h-[300px]">
                     {isLoading && (
-                        <div className="w-full aspect-square flex items-center justify-center">
-                            <Skeleton className="w-full h-full rounded-lg" />
+                        <div className="w-full flex items-center justify-center">
+                            <DoodleLoadingAnimation />
                         </div>
                     )}
                     {!isLoading && doodledImage && (
