@@ -222,8 +222,16 @@ export default function IntegratedDoodleStudio() {
           {/* Customization Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-xl">Customize Your Doodle</CardTitle>
-              <CardDescription>Choose a style and customize your doodle.</CardDescription>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="font-headline text-xl">Customize Your Doodle</CardTitle>
+                  <CardDescription>Choose a style and customize your doodle.</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground hover:text-foreground">
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                  Start Over
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
                     {/* Template Selector */}

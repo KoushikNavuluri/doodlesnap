@@ -169,63 +169,92 @@ export default function InlineTemplateSelector({
 
       {/* Template Cards - Horizontal Scroll */}
       <div className="overflow-x-auto pb-2">
-        <div className="flex gap-3 min-w-max">
+        <div className="flex gap-4 min-w-max px-1">
           {displayTemplates.map((template, index) => (
-                      <Card 
-            key={template.id}
-            className={`cursor-pointer transition-all hover:shadow-md flex-shrink-0 w-28 sm:w-32 ${
-              selectedTemplate?.id === template.id || 
-              (selectedTemplate === null && template.id === 'custom')
-                ? 'ring-2 ring-primary shadow-md' 
-                : ''
-            }`}
-            onClick={() => handleTemplateSelect(template)}
-          >
-            <CardContent className="p-2 sm:p-3">
-              <div className="flex flex-col items-center text-center space-y-1.5 sm:space-y-2">
-                <div className="flex items-center justify-between w-full">
-                  <span className="text-base sm:text-lg">{template.icon}</span>
-                  {template.id !== 'custom' && index < favoriteTemplates.length && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveFromFavorites(template);
-                      }}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                  )}
+            <Card 
+              key={template.id}
+              className={`group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 relative overflow-hidden ${
+                selectedTemplate?.id === template.id || 
+                (selectedTemplate === null && template.id === 'custom')
+                  ? 'ring-2 ring-primary shadow-lg scale-105' 
+                  : 'hover:ring-1 hover:ring-primary/50'
+              }`}
+              onClick={() => handleTemplateSelect(template)}
+            >
+              {/* Background Gradient */}
+              <div className={`absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity ${
+                template.category === 'Travel' ? 'bg-gradient-to-br from-blue-400 to-cyan-400' :
+                template.category === 'Personal' ? 'bg-gradient-to-br from-pink-400 to-rose-400' :
+                template.category === 'Business' ? 'bg-gradient-to-br from-slate-400 to-gray-400' :
+                template.category === 'Memory' ? 'bg-gradient-to-br from-amber-400 to-orange-400' :
+                template.category === 'Adventure' ? 'bg-gradient-to-br from-green-400 to-emerald-400' :
+                template.category === 'Food' ? 'bg-gradient-to-br from-red-400 to-pink-400' :
+                template.category === 'Science' ? 'bg-gradient-to-br from-purple-400 to-violet-400' :
+                template.category === 'Urban' ? 'bg-gradient-to-br from-gray-400 to-slate-400' :
+                template.category === 'Self-Development' ? 'bg-gradient-to-br from-teal-400 to-cyan-400' :
+                template.category === 'Sports' ? 'bg-gradient-to-br from-orange-400 to-red-400' :
+                template.category === 'Nature' ? 'bg-gradient-to-br from-green-400 to-lime-400' :
+                template.category === 'Music' ? 'bg-gradient-to-br from-purple-400 to-pink-400' :
+                template.category === 'Culture' ? 'bg-gradient-to-br from-yellow-400 to-amber-400' :
+                'bg-gradient-to-br from-indigo-400 to-purple-400'
+              }`} />
+              
+              <CardContent className="p-2 h-full flex flex-col items-center justify-center text-center relative z-10">
+                {/* Remove Button */}
+                {template.id !== 'custom' && index < favoriteTemplates.length && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveFromFavorites(template);
+                    }}
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                )}
+
+                {/* Icon */}
+                <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">
+                  {template.icon}
                 </div>
-                <div>
-                  <h4 className="font-medium text-xs leading-tight">{template.name}</h4>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 hidden sm:block">
-                    {template.description}
-                  </p>
-                </div>
+
+                {/* Title */}
+                <h4 className="font-semibold text-xs leading-tight text-center line-clamp-2">
+                  {template.name}
+                </h4>
+
+                {/* Category Badge - Only on larger screens */}
                 {template.category !== 'Custom' && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs mt-1 opacity-80 group-hover:opacity-100 transition-opacity hidden sm:inline-flex"
+                  >
                     {template.category}
                   </Badge>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+
+                {/* Selected Indicator */}
+                {(selectedTemplate?.id === template.id || 
+                  (selectedTemplate === null && template.id === 'custom')) && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full border-2 border-white" />
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
 
       {/* Selected Template Info */}
       {selectedTemplate && (
-        <div className="p-3 bg-muted rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-gradient-to-r from-muted/50 to-muted/80 rounded-lg border border-muted">
+          <div className="flex items-center gap-2 mb-1">
             <span className="text-lg">{selectedTemplate.icon}</span>
-            <h4 className="font-medium">{selectedTemplate.name}</h4>
-            <Badge variant="secondary">{selectedTemplate.category}</Badge>
+            <h4 className="font-medium text-sm">{selectedTemplate.name}</h4>
+            <Badge variant="secondary" className="text-xs">{selectedTemplate.category}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground line-clamp-2">
             {selectedTemplate.description}
           </p>
         </div>
