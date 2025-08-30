@@ -43,3 +43,8 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# credentials and secrets
+/credentials/
+credentials/
+service-account-key.json
