@@ -19,10 +19,16 @@ class SimpleStorageService {
 
   constructor() {
     this.bucketName = 'doodle-snap';
-    this.storage = new Storage({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'snappy-bucksaw-462516-t4',
-      keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE || './credentials/service-account-key.json',
-    });
+    
+    try {
+      this.storage = new Storage({
+        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'snappy-bucksaw-462516-t4',
+        keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE || './credentials/service-account-key.json',
+      });
+    } catch (error) {
+      console.error('Failed to initialize Google Cloud Storage:', error);
+      throw new Error('Google Cloud Storage initialization failed');
+    }
   }
 
   /**
@@ -79,34 +85,63 @@ class SimpleStorageService {
    */
   async getUserImages(userId: string): Promise<Array<{ fileName: string; metadata: any; url: string }>> {
     try {
+      console.log('getUserImages: Starting for userId:', userId);
+      
       const bucket = this.storage.bucket(this.bucketName);
+      console.log('getUserImages: Got bucket reference:', this.bucketName);
+      
       const [files] = await bucket.getFiles({
         prefix: `${userId}/`, // Only get files in the user's folder
       });
       
+      console.log('getUserImages: Found files count:', files.length);
+      
       const userImages = [];
       
       for (const file of files) {
-        // Get file metadata
-        const [metadata] = await file.getMetadata();
-        
-        // Generate signed URL
-        const [signedUrl] = await file.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-        });
-        
-        userImages.push({
-          fileName: file.name,
-          metadata: metadata.metadata || {},
-          url: signedUrl,
-        });
+        try {
+          // Get file metadata
+          const [metadata] = await file.getMetadata();
+          
+          // Generate signed URL
+          const [signedUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+          });
+          
+          userImages.push({
+            fileName: file.name,
+            metadata: metadata.metadata || {},
+            url: signedUrl,
+          });
+        } catch (fileError) {
+          console.warn('getUserImages: Error processing file', file.name, fileError);
+          // Continue with other files
+        }
       }
       
+      console.log('getUserImages: Processed images count:', userImages.length);
       return userImages;
     } catch (error) {
-      console.error('Error getting user images:', error);
-      throw new Error('Failed to get user images');
+      console.error('getUserImages: Error getting user images:', {
+        error,
+        userId,
+        bucketName: this.bucketName,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      // Check if it's an authentication or bucket access issue
+      if (error instanceof Error) {
+        if (error.message.includes('404') || error.message.includes('not found')) {
+          throw new Error(`Storage bucket '${this.bucketName}' not found. Please check configuration.`);
+        } else if (error.message.includes('403') || error.message.includes('permission') || error.message.includes('forbidden')) {
+          throw new Error('Insufficient permissions to access Google Cloud Storage. Please check service account permissions.');
+        } else if (error.message.includes('authentication') || error.message.includes('credentials')) {
+          throw new Error('Google Cloud Storage authentication failed. Please check service account credentials.');
+        }
+      }
+      
+      throw new Error(`Failed to get user images: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -118,11 +153,26 @@ class SimpleStorageService {
     doodle: { fileName: string; metadata: any; url: string };
   }>> {
     try {
+      console.log('Fetching Doodle Snaps for user:', userId);
+      
+      // First check if the bucket exists and is accessible
+      const bucket = this.storage.bucket(this.bucketName);
+      try {
+        await bucket.getMetadata();
+        console.log('Bucket is accessible:', this.bucketName);
+      } catch (bucketError) {
+        console.error('Bucket access error:', bucketError);
+        throw new Error(`Cannot access bucket '${this.bucketName}'. Please check permissions.`);
+      }
+      
       const allImages = await this.getUserImages(userId);
+      console.log(`Found ${allImages.length} total images for user`);
       
       // Separate originals and doodles
       const originals = allImages.filter(img => img.metadata.isOriginal === 'true');
       const doodles = allImages.filter(img => img.metadata.isOriginal === 'false');
+      
+      console.log(`Found ${originals.length} originals and ${doodles.length} doodles`);
       
       const projects = [];
       
@@ -138,6 +188,8 @@ class SimpleStorageService {
               original,
               doodle,
             });
+          } else {
+            console.warn(`No original found for doodle with parentImageId: ${doodle.metadata.parentImageId}`);
           }
         }
       }
@@ -149,10 +201,22 @@ class SimpleStorageService {
         return dateB - dateA;
       });
       
+      console.log(`Returning ${projects.length} Doodle Snaps projects`);
       return projects;
     } catch (error) {
-      console.error('Error getting user Doodle Snaps:', error);
-      throw new Error('Failed to get user Doodle Snaps');
+      console.error('Detailed error getting user Doodle Snaps:', {
+        error,
+        userId,
+        bucketName: this.bucketName,
+        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'snappy-bucksaw-462516-t4',
+        keyFile: process.env.GOOGLE_CLOUD_KEY_FILE || './credentials/service-account-key.json'
+      });
+      
+      if (error instanceof Error) {
+        throw new Error(`Failed to get user Doodle Snaps: ${error.message}`);
+      } else {
+        throw new Error('Failed to get user Doodle Snaps: Unknown error');
+      }
     }
   }
 

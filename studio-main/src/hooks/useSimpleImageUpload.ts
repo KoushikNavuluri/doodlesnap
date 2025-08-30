@@ -171,32 +171,54 @@ export function useSimpleImageUpload(): UseSimpleImageUploadReturn {
 
   const getUserDoodleProjects = useCallback(async (): Promise<any[] | null> => {
     if (!user) {
+      console.log('getUserDoodleProjects: No user authenticated');
       return null;
     }
 
+    console.log('getUserDoodleProjects: Fetching for user:', user.uid);
+
     try {
-      const response = await fetch(`/api/simple-upload/projects?userId=${encodeURIComponent(user.uid)}`, {
+      const url = `/api/simple-upload/projects?userId=${encodeURIComponent(user.uid)}`;
+      console.log('getUserDoodleProjects: Making request to:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
         },
       });
       
+      console.log('getUserDoodleProjects: Response status:', response.status);
+      
       const result = await response.json();
+      console.log('getUserDoodleProjects: Response data:', result);
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to fetch Doodle Snaps');
+        const errorMessage = result.error || `HTTP ${response.status}: Failed to fetch Doodle Snaps`;
+        console.error('getUserDoodleProjects: API error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
-      return result.projects;
+      console.log('getUserDoodleProjects: Successfully fetched', result.projects?.length || 0, 'projects');
+      return result.projects || [];
     } catch (error) {
-      console.error('Error fetching Doodle Snaps:', error);
+      console.error('getUserDoodleProjects: Complete error details:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId: user.uid
+      });
+      
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch Doodle Snaps.";
+      
       toast({
         title: "Fetch Failed",
-        description: error instanceof Error ? error.message : "Failed to fetch Doodle Snaps.",
+        description: `Error: ${errorMessage}`,
         variant: "destructive",
       });
-      return null;
+      
+      // Re-throw the error so it can be caught by the calling component
+      throw new Error(`Failed to fetch user Doodle Snaps: ${errorMessage}`);
     }
   }, [user, toast]);
 

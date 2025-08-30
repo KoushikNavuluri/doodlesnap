@@ -16,9 +16,12 @@ export default function DoodleProjectGallery() {
 
   const loadProjects = async () => {
     if (!user) {
+      console.log('DoodleProjectGallery: No user, stopping load');
       setIsLoading(false);
       return;
     }
+    
+    console.log('DoodleProjectGallery: Loading projects for user:', user.uid);
     
     if (!hasLoadedOnce) {
       setIsLoading(true);
@@ -26,12 +29,21 @@ export default function DoodleProjectGallery() {
     
     try {
       const userProjects = await getUserDoodleProjects();
+      console.log('DoodleProjectGallery: Received projects:', userProjects);
+      
       if (userProjects) {
         setProjects(userProjects);
+        console.log('DoodleProjectGallery: Set projects:', userProjects.length);
+      } else {
+        console.log('DoodleProjectGallery: No projects returned, setting empty array');
+        setProjects([]);
       }
       setHasLoadedOnce(true);
     } catch (error) {
-      console.error('Error loading Doodle Snaps:', error);
+      console.error('DoodleProjectGallery: Error loading Doodle Snaps:', error);
+      // Set empty projects array on error to prevent UI issues
+      setProjects([]);
+      setHasLoadedOnce(true);
     } finally {
       setIsLoading(false);
     }
