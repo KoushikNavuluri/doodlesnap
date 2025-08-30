@@ -48,9 +48,9 @@ export default function Header() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/my-doodles">
+                <Link href="/my-doodles" prefetch={true}>
                   <LayoutDashboard className="mr-2 h-4 w-4" />
-                  <span>My Doodles</span>
+                  <span>My Doodle Snaps</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

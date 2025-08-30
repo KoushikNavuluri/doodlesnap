@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Download, Sparkles, RefreshCcw, FileImage } from 'lucide-react';
 import { generateDoodle } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { useSimpleImageUpload } from '@/hooks/useSimpleImageUpload';
+import { dataURItoFile, generateDoodleFilename } from '@/lib/utils/image-utils';
 
 import DoodleLoadingAnimation from '@/components/DoodleLoadingAnimation';
 import InlineTemplateSelector from '@/components/InlineTemplateSelector';
@@ -19,6 +21,7 @@ import { DoodleTemplate } from '@/types/templates';
 
 export default function IntegratedDoodleStudio() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [originalImageFileName, setOriginalImageFileName] = useState<string | null>(null);
   const [doodledImage, setDoodledImage] = useState<string | null>(null);
   const [stylePrompt, setStylePrompt] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -28,24 +31,18 @@ export default function IntegratedDoodleStudio() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { uploadImage, isUploading, user } = useSimpleImageUpload();
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Invalid File Type",
-          description: "Please upload an image file (e.g., JPEG, PNG, WEBP).",
-          variant: "destructive",
-        });
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setOriginalImage(reader.result as string);
+    if (file && user) {
+      // Upload to Google Cloud Storage
+      const uploadResult = await uploadImage(file, { isOriginal: true });
+      if (uploadResult) {
+        setOriginalImage(uploadResult.imageUrl);
+        setOriginalImageFileName(uploadResult.fileName);
         setDoodledImage(null);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
   
@@ -98,7 +95,7 @@ export default function IntegratedDoodleStudio() {
   };
 
   const handleGenerateDoodle = async () => {
-    if (!originalImage) return;
+    if (!originalImage || !user) return;
 
     // Validate required parameters for template
     if (selectedTemplate) {
@@ -127,13 +124,39 @@ export default function IntegratedDoodleStudio() {
       });
 
       if (result.doodledImage) {
-        setDoodledImage(result.doodledImage);
-        toast({
-          title: "Doodle created!",
-          description: selectedTemplate 
-            ? `Your ${selectedTemplate.name} has been successfully created.`
-            : "Your custom doodle has been successfully created.",
+        // Convert the base64 data URI to a File
+        const doodleFilename = generateDoodleFilename(
+          originalImageFileName, 
+          selectedTemplate?.name
+        );
+        const doodleFile = dataURItoFile(result.doodledImage, doodleFilename);
+        
+        // Upload the doodle to Google Cloud Storage
+        const uploadResult = await uploadImage(doodleFile, {
+          isOriginal: false,
+          parentImageId: originalImageFileName,
+          stylePrompt: finalPrompt,
+          templateUsed: selectedTemplate?.name,
         });
+
+        if (uploadResult) {
+          // Use the cloud storage URL instead of the data URI
+          setDoodledImage(uploadResult.imageUrl);
+          toast({
+            title: "Doodle created and saved!",
+            description: selectedTemplate 
+              ? `Your ${selectedTemplate.name} has been successfully created and saved.`
+              : "Your custom doodle has been successfully created and saved.",
+          });
+        } else {
+          // Fallback to showing the data URI if upload fails
+          setDoodledImage(result.doodledImage);
+          toast({
+            title: "Doodle created!",
+            description: "Doodle created but could not be saved to cloud storage.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Doodle Generation Failed",
@@ -142,6 +165,7 @@ export default function IntegratedDoodleStudio() {
         });
       }
     } catch (error) {
+      console.error('Doodle generation error:', error);
       toast({
         title: "Doodle Generation Failed",
         description: "An unexpected error occurred. Please try again.",
@@ -166,6 +190,7 @@ export default function IntegratedDoodleStudio() {
   
   const handleReset = () => {
     setOriginalImage(null);
+    setOriginalImageFileName(null);
     setDoodledImage(null);
     setStylePrompt('');
     setSelectedTemplate(null);
@@ -183,24 +208,32 @@ export default function IntegratedDoodleStudio() {
         <CardDescription>Let's turn your photo into a doodle masterpiece.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div 
-          className="border-2 border-dashed border-border rounded-lg p-12 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-colors"
-          onClick={handleUploadClick}
-          onKeyDown={(e) => e.key === 'Enter' && handleUploadClick()}
-          role="button"
-          tabIndex={0}
-        >
-          <FileImage className="w-16 h-16 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Click to browse or drag and drop</p>
-          <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP up to 10MB</p>
-          <Input 
-            ref={fileInputRef}
-            type="file" 
-            className="hidden" 
-            accept="image/*" 
-            onChange={handleFileChange} 
-          />
-        </div>
+        {isUploading ? (
+          <div className="border-2 border-dashed border-border rounded-lg p-12 flex flex-col items-center justify-center">
+            <DoodleLoadingAnimation />
+            <p className="text-muted-foreground mt-4">Uploading your image...</p>
+          </div>
+        ) : (
+          <div 
+            className="border-2 border-dashed border-border rounded-lg p-12 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-colors"
+            onClick={handleUploadClick}
+            onKeyDown={(e) => e.key === 'Enter' && handleUploadClick()}
+            role="button"
+            tabIndex={0}
+          >
+            <FileImage className="w-16 h-16 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Click to browse or drag and drop</p>
+            <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP up to 10MB</p>
+          </div>
+        )}
+        <Input 
+          ref={fileInputRef}
+          type="file" 
+          className="hidden" 
+          accept="image/*" 
+          onChange={handleFileChange}
+          disabled={isUploading}
+        />
       </CardContent>
     </Card>
   );
